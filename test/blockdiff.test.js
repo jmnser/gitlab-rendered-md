@@ -6,7 +6,7 @@ import { parseRenderedHtml } from '../src/lib/render.js';
 
 const { window } = new JSDOM('');
 const doc = window.document;
-const parse = (html) => parseRenderedHtml(html, window.DOMParser);
+const parse = (html) => parseRenderedHtml(html, window);
 
 function blocks(out) {
   return Array.from(out.children).map((el) => {
@@ -65,6 +65,20 @@ test('shows removals before additions in a replaced run', () => {
     doc,
   );
   assert.deepEqual(blocks(out), ['P:rmd-removed:old', 'H1:rmd-added:new', 'P:rmd-added:new']);
+});
+
+test('ignores generated ids and footnote links when comparing blocks', () => {
+  const out = renderDiff(
+    parse('<h2 id="user-content-a">A</h2><p>x<sup><a href="#fn-1-111" id="fnref-1-111">1</a></sup></p>'),
+    parse('<h2 id="user-content-a-1">A</h2><p>x<sup><a href="#fn-1-222" id="fnref-1-222">1</a></sup></p>'),
+    doc,
+  );
+  assert.deepEqual(blocks(out), ['H2:rmd-same:new', 'P:rmd-same:new']);
+});
+
+test('opens changed details blocks', () => {
+  const out = renderDiff(parse('<details><summary>S</summary><p>a</p></details>'), parse('<details><summary>S</summary><p>b</p></details>'), doc);
+  assert.equal(out.querySelector('details').open, true);
 });
 
 test('similarity', () => {

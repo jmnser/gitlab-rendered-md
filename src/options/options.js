@@ -33,6 +33,12 @@ async function render() {
     token.autocomplete = 'off';
     token.placeholder = 'Use browser sign-in';
     token.value = tokens[origin] ?? '';
+    if (new URL(origin).protocol !== 'https:') {
+      // A token would travel in clear text.
+      token.disabled = true;
+      token.value = '';
+      token.placeholder = 'Tokens require https';
+    }
     token.addEventListener('change', async () => {
       const current = (await load()).tokens;
       if (token.value.trim()) current[origin] = token.value.trim();
@@ -47,11 +53,11 @@ async function render() {
       action.addEventListener('click', async () => {
         const state = await load();
         delete state.tokens[origin];
-        await browser.storage.local.set({
-          instances: state.instances.filter((o) => o !== origin),
-          tokens: state.tokens,
-        });
-        await browser.permissions.remove({ origins: [pattern(origin)] });
+        const remaining = state.instances.filter((o) => o !== origin);
+        await browser.storage.local.set({ instances: remaining, tokens: state.tokens });
+        // Patterns carry no port, so instances on the same host share one permission.
+        const shared = [DEFAULT_ORIGIN, ...remaining].some((o) => pattern(o) === pattern(origin));
+        if (!shared) await browser.permissions.remove({ origins: [pattern(origin)] });
         render();
       });
     }

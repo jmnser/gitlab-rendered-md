@@ -60,14 +60,8 @@ export function createApi({ apiBase, token, csrfToken, fetchImpl }) {
     getProject: (projectPath) => json(`/projects/${enc(projectPath)}`),
     listVersions: (projectId, iid) => json(`${mr(projectId, iid)}/versions`),
     getVersion: (projectId, iid, versionId) => json(`${mr(projectId, iid)}/versions/${versionId}`),
-    async getRawFile(projectId, filePath, ref) {
-      try {
-        return await request(`/projects/${enc(projectId)}/repository/files/${enc(filePath)}/raw?ref=${enc(ref)}`, { as: 'text' });
-      } catch (e) {
-        if (e instanceof ApiError && e.status === 404) return '';
-        throw e;
-      }
-    },
+    getRawFile: (projectId, filePath, ref) =>
+      request(`/projects/${enc(projectId)}/repository/files/${enc(filePath)}/raw?ref=${enc(ref)}`, { as: 'text' }),
     async renderMarkdown(text, projectPath) {
       const { html } = await json('/markdown', { method: 'POST', body: { text, gfm: true, project: projectPath } });
       return html;

@@ -19,5 +19,8 @@
     "esbuild": "^0.28.2",
     "jsdom": "^31.0.1",
     "web-ext": "^10.8.0"
+  },
+  "dependencies": {
+    "dompurify": "3.4.17"
   }
 }

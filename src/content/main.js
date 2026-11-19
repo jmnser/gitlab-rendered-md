@@ -1,7 +1,7 @@
 import { createApi } from '../lib/api.js';
 import { buildLineMap, localHunks, parseUnifiedDiff, splitLines } from '../lib/linemap.js';
 import { parseMergeRequestPath } from '../lib/page.js';
-import { fixUrls, parseRenderedHtml } from '../lib/render.js';
+import { activateLazyMedia, parseRenderedHtml, resolveRelativeUrls } from '../lib/render.js';
 import { fileThreads } from '../lib/threads.js';
 import { csrfToken, diffContent, findMarkdownDiffFiles, toggleContainer } from './gitlab-dom.js';
 import { createPanel, setStatus, showReview } from './review.js';
@@ -26,6 +26,7 @@ function pageContext() {
 }
 
 async function configuredToken() {
+  if (location.protocol !== 'https:') return ''; // Never send a token in clear text.
   try {
     const { tokens = {} } = await browser.storage.local.get('tokens');
     return tokens[location.origin] || '';
@@ -43,13 +44,23 @@ function loadMergeRequest(ctx) {
       fetchImpl: pageFetch,
     });
     const projectId = document.body?.dataset.projectId || (await api.getProject(ctx.projectPath)).id;
-    const versions = await api.listVersions(projectId, ctx.iid);
-    if (versions.length === 0) throw new Error('This merge request has no diff yet.');
-    // GitLab lists versions newest first; `diff_id` selects an older one in the UI.
-    const wanted = new URLSearchParams(location.search).get('diff_id');
-    const version = versions.find((v) => String(v.id) === wanted) ?? versions[0];
-    const detail = await api.getVersion(projectId, ctx.iid, version.id);
-    return { api, projectId, version, diffs: detail.diffs ?? [] };
+    const params = new URLSearchParams(location.search);
+    // `diff_id` selects an older version in GitLab's UI; otherwise use the newest (listed first).
+    let versionId = params.get('diff_id');
+    if (!versionId) {
+      const versions = await api.listVersions(projectId, ctx.iid);
+      if (versions.length === 0) throw new Error('This merge request has no diff yet.');
+      versionId = versions[0].id;
+    }
+    const version = await api.getVersion(projectId, ctx.iid, versionId);
+    return {
+      api,
+      projectId,
+      version,
+      diffs: version.diffs ?? [],
+      // `start_sha` compares two versions in GitLab; the rendered view always shows the full version diff.
+      notice: params.get('start_sha') ? 'The rendered view shows the full diff of this version, not the comparison between versions.' : '',
+    };
   })();
   mrPromise.catch(() => {
     mrPromise = null; // Allow a retry on the next toggle.
@@ -58,7 +69,7 @@ function loadMergeRequest(ctx) {
 }
 
 async function loadFileModel(ctx, path) {
-  const { api, projectId, version, diffs } = await loadMergeRequest(ctx);
+  const { api, projectId, version, diffs, notice } = await loadMergeRequest(ctx);
   const file = diffs.find((d) => d.new_path === path) ?? diffs.find((d) => d.old_path === path);
   if (!file) throw new Error(`${path} is not part of this merge request version.`);
   const { base_commit_sha: baseSha, head_commit_sha: headSha, start_commit_sha: startSha } = version;
@@ -70,30 +81,38 @@ async function loadFileModel(ctx, path) {
   const render = (text) => (text.trim() ? api.renderMarkdown(text, ctx.projectPath) : Promise.resolve(''));
   const [oldHtml, newHtml] = await Promise.all([render(oldText), render(newText)]);
 
-  const parse = (html, sha, filePath) =>
-    fixUrls(parseRenderedHtml(html, DOMParser), { webBase: ctx.webBase, projectPath: ctx.projectPath, sha, filePath });
+  const parse = (html) => activateLazyMedia(parseRenderedHtml(html, window));
 
   const hunks = file.diff ? parseUnifiedDiff(file.diff) : localHunks(oldText, newText);
 
   let threads = [];
-  let threadError = '';
+  const notices = [notice];
   try {
     threads = fileThreads(await api.listDiscussions(projectId, ctx.iid), file, headSha);
   } catch (e) {
-    threadError = `Existing comments could not be loaded: ${e.message}`;
+    notices.push(`Existing comments could not be loaded: ${e.message}`);
   }
 
   return {
     model: {
-      oldRoot: parse(oldHtml, baseSha, file.old_path),
-      newRoot: parse(newHtml, headSha, file.new_path),
+      oldRoot: parse(oldHtml),
+      newRoot: parse(newHtml),
+      finishDiff: (diff) =>
+        resolveRelativeUrls(diff, {
+          webBase: ctx.webBase,
+          projectPath: ctx.projectPath,
+          sides: { old: { sha: baseSha, filePath: file.old_path }, new: { sha: headSha, filePath: file.new_path } },
+        }),
+      commentsDisabled: hunks.approximate
+        ? 'This file is too large to map rendered blocks to diff lines. Comment in the raw diff instead.'
+        : '',
       map: buildLineMap(hunks),
       oldLineCount: splitLines(oldText).length,
       newLineCount: splitLines(newText).length,
       threads,
       noteUrl: (noteId) => `${ctx.webBase}/${ctx.projectPath}/-/merge_requests/${ctx.iid}#note_${noteId}`,
     },
-    threadError,
+    notice: notices.filter(Boolean).join(' '),
     postComment: (lines, body) =>
       api.createDiscussion(projectId, ctx.iid, body, {
         position_type: 'text',
@@ -111,9 +130,9 @@ async function openRendered(ctx, path, state) {
   state.failed = false;
   setStatus(state.ui, 'Rendering…');
   try {
-    const { model, threadError, postComment } = await loadFileModel(ctx, path);
+    const { model, notice, postComment } = await loadFileModel(ctx, path);
     if (ctx.key !== currentKey) return;
-    setStatus(state.ui, threadError, !!threadError);
+    setStatus(state.ui, notice);
     showReview(document, state.ui, model, postComment);
   } catch (e) {
     console.error('[gitlab-rendered-md]', path, e);
@@ -122,18 +141,20 @@ async function openRendered(ctx, path, state) {
   }
 }
 
-function toggle(ctx, path) {
+function toggle(path) {
+  const ctx = pageContext();
+  if (!ctx || ctx.key !== currentKey) return;
   let state = files.get(path);
   if (!state) files.set(path, (state = { active: false, ui: null }));
   state.active = !state.active;
   if (state.active && (!state.ui || state.failed)) {
-    state.ui ??= createPanel(document);
+    state.ui ??= createPanel(document, path);
     openRendered(ctx, path, state);
   }
   scan();
 }
 
-function ensureToggle(ctx, fileEl, path, active) {
+function ensureToggle(fileEl, path, active) {
   const container = toggleContainer(fileEl);
   if (!container) return;
   let btn = container.querySelector('.rmd-toggle');
@@ -147,10 +168,12 @@ function ensureToggle(ctx, fileEl, path, active) {
       // GitLab collapses the file when its header is clicked.
       ev.preventDefault();
       ev.stopPropagation();
-      toggle(ctx, path);
+      // GitLab may reuse a file element for another file; the path is kept current by scan().
+      toggle(btn.getAttribute('data-rmd-path'));
     });
     container.prepend(btn);
   }
+  if (btn.getAttribute('data-rmd-path') !== path) btn.setAttribute('data-rmd-path', path);
   if (btn.getAttribute('aria-pressed') !== String(active)) {
     btn.setAttribute('aria-pressed', String(active));
     btn.classList.toggle('selected', active);
@@ -169,7 +192,11 @@ function scan() {
   for (const { el, path } of findMarkdownDiffFiles(document)) {
     const state = files.get(path);
     const active = !!state?.active;
-    ensureToggle(ctx, el, path, active);
+    ensureToggle(el, path, active);
+    // Panels of other files left behind in a reused file element.
+    for (const panel of el.querySelectorAll('.rmd-panel')) {
+      if (panel.getAttribute('data-rmd-path') !== path) panel.remove();
+    }
     if (active) {
       if (!el.classList.contains('rmd-active')) el.classList.add('rmd-active');
       if (state.ui && !el.contains(state.ui.root)) {
@@ -196,7 +223,10 @@ function scheduleScan() {
 
 if (pageContext()) {
   scan();
-  new MutationObserver(scheduleScan).observe(document.body, {
+  new MutationObserver((records) => {
+    // Changes inside the rendered panels (hover, comment forms) need no scan.
+    if (records.some((r) => !r.target.closest?.('.rmd-panel'))) scheduleScan();
+  }).observe(document.body, {
     childList: true,
     subtree: true,
     attributes: true,

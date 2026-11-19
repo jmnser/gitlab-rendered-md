@@ -89,6 +89,10 @@
   cursor: pointer;
 }
 
+.rmd-body .rmd-readonly [data-sourcepos] {
+  cursor: auto;
+}
+
 .rmd-body .rmd-hover,
 .rmd-body .rmd-selected {
   outline: 2px solid var(--gl-focus-ring-outer-color, #1f75cb);

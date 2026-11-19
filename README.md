@@ -12,7 +12,7 @@ This add-on adds a rendered review view to the **Changes** tab.
 | Feature | Behaviour |
 |---------|-----------|
 | **Rendered** toggle | A button in the header of every changed Markdown file (`.md`, `.markdown`, `.mdown`, `.mkd`, `.mkdn`). It swaps GitLab's raw diff for the rendered view and back. |
-| Rendered diff | Unchanged blocks appear as normal. Added blocks are green, removed blocks red. In changed paragraphs, list items and table rows, the changed words are highlighted. |
+| Rendered diff | The HTML from GitLab is sanitized again with DOMPurify before display. Unchanged blocks appear as normal. Added blocks are green, removed blocks red. In changed paragraphs, list items and table rows, the changed words are highlighted. |
 | Comments | Click a paragraph, heading, list item, table row or code block to comment on it. The comment is a normal GitLab diff comment on the matching source line, visible to everyone in the raw diff as well. |
 | Existing threads | Diff comments of the current version appear under the block they belong to, with a link to the thread in GitLab. |
 
@@ -42,12 +42,14 @@ This add-on adds a rendered review view to the **Changes** tab.
 | Question | Decision |
 |----------|----------|
 | gitlab.com or self-managed? | Both. gitlab.com works after install. Self-managed instances are added in the add-on options; Firefox asks for access to each host. Instances served under a sub-path (`https://example.com/gitlab`) are supported. |
-| Token or OAuth? | Neither by default. The add-on calls the API as the page itself (Firefox `content.fetch`), with the browser's GitLab session cookie and the page's CSRF token, which is how GitLab's own frontend calls the API. A personal access token (scope `api`) can be set per instance in the options as a fallback. It is stored in the local browser profile only. |
+| Token or OAuth? | Neither by default. The add-on calls the API as the page itself (Firefox `content.fetch`), with the browser's GitLab session cookie and the page's CSRF token, which is how GitLab's own frontend calls the API. A personal access token (scope `api`) can be set per https instance in the options as a fallback. It is stored in the local browser profile only. |
 
 ## Limitations
 
 - Client-side rendered content (Mermaid, PlantUML, math) appears as code, because GitLab renders it in the browser.
 - Comment threads from earlier MR versions are not shown in the rendered view; they stay visible in GitLab.
+- When GitLab compares two MR versions (`start_sha`), the rendered view still shows the full diff of the selected version and says so.
+- Files too large for GitLab to send a diff and too large for an exact local diff are shown read-only.
 - Comments posted from the rendered view appear in GitLab's raw diff after a page reload.
 - The add-on relies on GitLab's Changes tab markup (`.diff-file[data-path]`). All selectors are in
   [`src/content/gitlab-dom.js`](src/content/gitlab-dom.js).

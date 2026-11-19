@@ -57,6 +57,12 @@ test('local hunks match a computed diff', () => {
   assert.equal(map.newToOld(3), 3);
 });
 
+test('flags local hunks that are too large for an exact diff', () => {
+  const big = (p) => Array.from({ length: 3000 }, (_, i) => `${p}${i}`).join('\n');
+  assert.equal(localHunks(big('a'), big('b')).approximate, true);
+  assert.equal(localHunks('a\n', 'b\n').approximate, false);
+});
+
 test('parses data-sourcepos', () => {
   assert.deepEqual(parseSourcepos('3:1-5:12'), { start: 3, end: 5 });
   assert.equal(parseSourcepos('garbage'), null);

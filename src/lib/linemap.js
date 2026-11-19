@@ -51,16 +51,21 @@ export function splitLines(text) {
 /**
  * Computes hunks locally from both file versions. Used when GitLab returns
  * no diff text (for example for files it considers too large).
+ * The result has `approximate = true` when the files were too large for an
+ * exact diff; its line numbers then do not match GitLab's diff.
  */
 export function localHunks(oldText, newText) {
   const a = splitLines(oldText);
   const b = splitLines(newText);
-  const lines = diffSequences(a, b).map((op) => {
+  const ops = diffSequences(a, b);
+  const lines = ops.map((op) => {
     if (op.type === 'equal') return { type: 'context', oldLine: op.a + 1, newLine: op.b + 1 };
     if (op.type === 'delete') return { type: 'del', oldLine: op.a + 1 };
     return { type: 'add', newLine: op.b + 1 };
   });
-  return [{ lines, oldNext: a.length + 1, newNext: b.length + 1 }];
+  const hunks = [{ lines, oldNext: a.length + 1, newNext: b.length + 1 }];
+  hunks.approximate = !!ops.approximate;
+  return hunks;
 }
 
 /**

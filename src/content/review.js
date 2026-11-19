@@ -9,8 +9,9 @@ function el(doc, tag, className, text) {
 }
 
 /** Creates the empty panel that replaces GitLab's raw diff of one file. */
-export function createPanel(doc) {
+export function createPanel(doc, path) {
   const root = el(doc, 'div', 'rmd-panel');
+  root.setAttribute('data-rmd-path', path);
   const bar = el(doc, 'div', 'rmd-toolbar');
   bar.append(
     el(doc, 'span', 'rmd-legend rmd-legend-added', 'Added'),
@@ -20,7 +21,7 @@ export function createPanel(doc) {
   const status = el(doc, 'div', 'rmd-status', 'Rendering…');
   const body = el(doc, 'div', 'md rmd-body');
   root.append(bar, status, body);
-  return { root, status, body };
+  return { root, status, body, hint: bar.querySelector('.rmd-hint') };
 }
 
 export function setStatus(ui, text, isError = false) {
@@ -38,11 +39,18 @@ export function setStatus(ui, text, isError = false) {
  *   oldLineCount, newLineCount
  *   threads            from threads.fileThreads
  *   noteUrl(noteId)    link to a note in GitLab
+ *   finishDiff(diff)   post-processing of the merged diff (URL resolution)
+ *   commentsDisabled   reason why commenting is off, or empty
  * postComment(lines, text) -> Promise<discussion>
  */
 export function showReview(doc, ui, model, postComment) {
   const diff = renderDiff(model.oldRoot, model.newRoot, doc);
+  model.finishDiff?.(diff);
   ui.body.replaceChildren(diff);
+  if (model.commentsDisabled) {
+    ui.hint.textContent = model.commentsDisabled;
+    diff.classList.add('rmd-readonly');
+  }
   if (diff.childElementCount === 0) setStatus(ui, 'Both versions are empty.');
 
   const unplaced = [];
@@ -65,6 +73,7 @@ export function showReview(doc, ui, model, postComment) {
     hovered = block;
     hovered?.classList.add('rmd-hover');
   };
+  if (model.commentsDisabled) return;
   diff.addEventListener('mouseover', (ev) => setHover(isInteractive(ev.target) ? null : blockAt(ev.target, diff)?.block ?? null));
   diff.addEventListener('mouseleave', () => setHover(null));
 
@@ -153,7 +162,16 @@ function describeLines(lines) {
 }
 
 function openForm(doc, diff, block, lines, model, postComment) {
-  diff.querySelector('.rmd-form')?.remove();
+  const open = diff.querySelector('.rmd-form');
+  if (open) {
+    const draft = open.querySelector('textarea');
+    if (draft.value.trim() !== '') {
+      // Keep an unsent draft; it has to be sent or cancelled first.
+      draft.focus();
+      return;
+    }
+    open.remove();
+  }
   diff.querySelector('.rmd-selected')?.classList.remove('rmd-selected');
   block.classList.add('rmd-selected');
 

@@ -7,7 +7,8 @@
  *
  * Common prefix and suffix are trimmed first, so typical edits stay cheap.
  * If the remaining middle part exceeds `maxCells` DP cells, it is reported
- * as a full replacement instead of computing an exact LCS.
+ * as a full replacement instead of computing an exact LCS, and the returned
+ * array has `approximate = true`.
  */
 export function diffSequences(a, b, maxCells = 4_000_000) {
   const ops = [];
@@ -25,6 +26,7 @@ export function diffSequences(a, b, maxCells = 4_000_000) {
   const n = endA - start;
   const m = endB - start;
   if (n * m > maxCells) {
+    ops.approximate = true;
     for (let i = start; i < endA; i++) ops.push({ type: 'delete', a: i });
     for (let j = start; j < endB; j++) ops.push({ type: 'insert', b: j });
   } else if (n > 0 || m > 0) {

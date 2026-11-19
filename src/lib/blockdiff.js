@@ -47,13 +47,20 @@ function blockChildren(el) {
 
 const keyCache = new WeakMap();
 
-/** Comparison key: the element's HTML without source positions. */
+/**
+ * Comparison key: the element's HTML without attributes that change when
+ * unrelated parts of the document change: source positions, generated ids
+ * (headings, footnotes) and links to footnote ids.
+ */
 function keyOf(el) {
   let key = keyCache.get(el);
   if (key === undefined) {
     const clone = el.cloneNode(true);
-    clone.removeAttribute('data-sourcepos');
-    for (const d of clone.querySelectorAll('[data-sourcepos]')) d.removeAttribute('data-sourcepos');
+    for (const d of [clone, ...clone.querySelectorAll('*')]) {
+      d.removeAttribute('data-sourcepos');
+      d.removeAttribute('id');
+      if (/^#fn/.test(d.getAttribute('href') ?? '')) d.removeAttribute('href');
+    }
     key = clone.outerHTML;
     keyCache.set(el, key);
   }
@@ -101,7 +108,7 @@ function emitChange(dels, ins, out, doc) {
 
   let nextDel = 0;
   const emitDelsBefore = (limit) => {
-    while (nextDel < limit) out.append(mark(dels[nextDel++].cloneNode(true), 'old', 'rmd-removed'));
+    while (nextDel < limit) out.append(openDetails(mark(dels[nextDel++].cloneNode(true), 'old', 'rmd-removed')));
   };
   for (let j = 0; j < ins.length; j++) {
     const i = pairOf[j];
@@ -109,7 +116,7 @@ function emitChange(dels, ins, out, doc) {
       // Removed blocks are shown before added ones, up to the next pair.
       const nextPair = pairOf.slice(j + 1).find((p) => p !== -1);
       emitDelsBefore(nextPair === undefined ? dels.length : nextPair);
-      out.append(mark(ins[j].cloneNode(true), 'new', 'rmd-added'));
+      out.append(openDetails(mark(ins[j].cloneNode(true), 'new', 'rmd-added')));
       continue;
     }
     emitDelsBefore(i);
@@ -133,6 +140,7 @@ function emitPair(oldEl, newEl, out, doc) {
     if (oldKids && newKids && (oldKids.length > 0 || newKids.length > 0)) {
       const shell = mark(newEl.cloneNode(false), 'new', 'rmd-container');
       diffInto(oldKids, newKids, shell, doc);
+      if (shell.tagName === 'DETAILS') shell.open = true; // Show the changes inside.
       out.append(shell);
       return;
     }
@@ -140,7 +148,12 @@ function emitPair(oldEl, newEl, out, doc) {
   const o = mark(oldEl.cloneNode(true), 'old', 'rmd-removed');
   const n = mark(newEl.cloneNode(true), 'new', 'rmd-added');
   markWordChanges(o, n, doc);
-  out.append(o, n);
+  out.append(openDetails(o), openDetails(n));
+}
+
+function openDetails(el) {
+  if (el.tagName === 'DETAILS') el.open = true;
+  return el;
 }
 
 function mark(el, side, cls) {

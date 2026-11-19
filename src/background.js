@@ -38,8 +38,12 @@ function originPattern(origin) {
   }
 }
 
+// Syncs run one after another; overlapping runs would register the same id twice.
+let queue = Promise.resolve();
 function sync() {
-  syncContentScripts().catch((e) => console.error('[gitlab-rendered-md] content script sync failed', e));
+  queue = queue
+    .then(syncContentScripts)
+    .catch((e) => console.error('[gitlab-rendered-md] content script sync failed', e));
 }
 
 browser.runtime.onInstalled.addListener(sync);
