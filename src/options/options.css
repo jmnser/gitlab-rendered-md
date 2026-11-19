@@ -1,0 +1,29 @@
+body {
+  font: 14px/1.5 system-ui, sans-serif;
+  margin: 16px;
+  max-width: 760px;
+}
+
+input[type='url'] {
+  width: 320px;
+}
+
+table {
+  border-collapse: collapse;
+  margin-top: 12px;
+  width: 100%;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 4px 8px 4px 0;
+}
+
+td input {
+  width: 100%;
+}
+
+.error {
+  color: #c91c00;
+}
