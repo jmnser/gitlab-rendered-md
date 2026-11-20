@@ -114,11 +114,16 @@ export function buildLineMap(hunks) {
   };
 }
 
-/** Parses `data-sourcepos="3:1-5:12"` into `{ start: 3, end: 5 }`. */
+/**
+ * Parses `data-sourcepos="3:1-5:12"` into `{ start: 3, end: 5 }`.
+ * An end at column 0 (`5:1-6:0`, used for list items) ends on the previous line.
+ */
 export function parseSourcepos(value) {
-  const m = /^(\d+):\d+-(\d+):\d+$/.exec(value ?? '');
+  const m = /^(\d+):\d+-(\d+):(\d+)$/.exec(value ?? '');
   if (!m) return null;
-  return { start: Number(m[1]), end: Number(m[2]) };
+  const start = Number(m[1]);
+  const end = Number(m[3]) === 0 ? Number(m[2]) - 1 : Number(m[2]);
+  return { start, end: Math.max(start, end) };
 }
 
 /**

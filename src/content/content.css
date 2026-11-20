@@ -1,5 +1,6 @@
 /* GitLab's raw diff is hidden while the rendered view is active. */
-.rmd-active .diff-content {
+.rmd-active .diff-content,
+.rmd-active .rd-diff-file-body {
   display: none !important;
 }
 

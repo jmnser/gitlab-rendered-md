@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import { JSDOM } from 'jsdom';
 import { parseMergeRequestPath } from '../src/lib/page.js';
 import { renderDiff } from '../src/lib/blockdiff.js';
-import { activateLazyMedia, parseRenderedHtml, resolveRelativeUrls } from '../src/lib/render.js';
+import { activateLazyMedia, parseRenderedHtml, resolveRelativeUrls, sourceSlice } from '../src/lib/render.js';
 import { fileThreads } from '../src/lib/threads.js';
 
 test('parses merge request URLs', () => {
@@ -20,29 +20,41 @@ test('parses merge request URLs', () => {
   assert.equal(parseMergeRequestPath('/group/proj/-/issues/1'), null);
 });
 
-test('resolves relative links and lazy images per side after diffing', () => {
+test('resolves relative links and images from the Markdown source per side', () => {
   const { window } = new JSDOM('');
   const parse = (html) => activateLazyMedia(parseRenderedHtml(html, window));
-  const same = '<p data-sourcepos="1:1-1:9"><a href="other.md">x</a><a href="#top">t</a><a href="https://e.com">e</a></p>';
-  const diff = renderDiff(
-    parse(`${same}<p data-sourcepos="3:1-3:9"><img class="lazy" src="data:image/gif;base64,AA" data-src="img/old.png"></p>`),
-    parse(`${same}<p data-sourcepos="3:1-3:9"><img class="lazy" src="data:image/gif;base64,AA" data-src="img/new.png"></p>`),
-    window.document,
-  );
-  // The paragraph with relative links compares equal on both sides.
+  // Shaped like GitLab 19.5 output with `project` set: relative URLs already rewritten to the default branch root.
+  const para =
+    '<p data-sourcepos="1:1-1:60"><a data-sourcepos="1:1-1:13" href="/g/p/-/blob/main/other.md">x</a> ' +
+    '<a data-sourcepos="1:15-1:22" href="#top">t</a> <a data-sourcepos="1:24-1:42" href="https://e.com">e</a></p>';
+  const img = (name, line) =>
+    `<p data-sourcepos="${line}:1-${line}:20"><a class="no-attachment-icon" href="/g/p/-/blob/main/img/${name}">` +
+    `<img data-sourcepos="${line}:1-${line}:20" src="data:image/gif;base64,AA" class="lazy" data-src="/g/p/-/blob/main/img/${name}"></a></p>`;
+  const OLD = '[x](other.md) [t](#top) [e](https://e.com)\n\n![i](<img/old.png>)\n';
+  const NEW = '[x](other.md) [t](#top) [e](https://e.com)\n\n![i](<img/new.png>)\n';
+  const diff = renderDiff(parse(para + img('old.png', 3)), parse(para + img('new.png', 3)), window.document);
   assert.ok(diff.children[0].classList.contains('rmd-same'));
   resolveRelativeUrls(diff, {
     webBase: 'https://gl.example/gitlab',
     projectPath: 'g/p',
-    sides: { old: { sha: 'base', filePath: 'docs/README.md' }, new: { sha: 'head', filePath: 'docs/README.md' } },
+    sides: {
+      old: { sha: 'base', filePath: 'docs/README.md', text: OLD },
+      new: { sha: 'head', filePath: 'docs/README.md', text: NEW },
+    },
   });
-  const [rel, anchor, abs] = diff.querySelectorAll('a');
+  const [rel, anchor, abs] = diff.children[0].querySelectorAll('a');
   assert.equal(rel.getAttribute('href'), 'https://gl.example/gitlab/g/p/-/blob/head/docs/other.md');
   assert.equal(anchor.getAttribute('href'), '#top');
   assert.equal(abs.getAttribute('href'), 'https://e.com');
   const [oldImg, newImg] = diff.querySelectorAll('img');
   assert.equal(oldImg.getAttribute('src'), 'https://gl.example/gitlab/g/p/-/raw/base/docs/img/old.png');
   assert.equal(newImg.getAttribute('src'), 'https://gl.example/gitlab/g/p/-/raw/head/docs/img/new.png');
+  assert.equal(newImg.closest('a').getAttribute('href'), 'https://gl.example/gitlab/g/p/-/raw/head/docs/img/new.png');
+});
+
+test('slices Markdown source by byte columns', () => {
+  assert.equal(sourceSlice('ä [x](y.md)\n', '1:4-1:12'), '[x](y.md)');
+  assert.equal(sourceSlice('a\nbc\nd', '1:1-2:1'), 'a\nb');
 });
 
 test('sanitizes rendered HTML but keeps source positions', () => {

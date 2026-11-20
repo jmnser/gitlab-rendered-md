@@ -5,7 +5,8 @@ instead of raw source.
 
 GitLab shows `.md` changes in merge requests only as raw text
 ([gitlab-org/gitlab#17000](https://gitlab.com/gitlab-org/gitlab/-/issues/17000)).
-This add-on adds a rendered review view to the **Changes** tab.
+This add-on adds a rendered review view to the **Changes** tab, in both GitLab diff views: Rapid Diffs (the default from
+GitLab 19) and the classic diffs.
 
 ## Features
 
@@ -51,8 +52,10 @@ This add-on adds a rendered review view to the **Changes** tab.
 - When GitLab compares two MR versions (`start_sha`), the rendered view still shows the full diff of the selected version and says so.
 - Files too large for GitLab to send a diff and too large for an exact local diff are shown read-only.
 - Comments posted from the rendered view appear in GitLab's raw diff after a page reload.
-- The add-on relies on GitLab's Changes tab markup (`.diff-file[data-path]`). All selectors are in
-  [`src/content/gitlab-dom.js`](src/content/gitlab-dom.js).
+- Relative links and images resolve against the file's directory at the MR commit when they are inline links
+  (`[x](other.md)`). Reference-style links keep GitLab's URL, which points at the repository root on the default branch.
+- The add-on relies on GitLab's Changes tab markup (Rapid Diffs: `diff-file[data-file-data]`, classic:
+  `.diff-file[data-path]`). All selectors are in [`src/content/gitlab-dom.js`](src/content/gitlab-dom.js).
 
 ## Development
 
@@ -65,6 +68,16 @@ npm run lint      # build and run web-ext lint
 npm start         # build and start Firefox with the add-on loaded
 npm run package   # build a .zip for AMO into artifacts/
 ```
+
+### End-to-end test
+
+[`e2e/run.sh`](e2e/run.sh) starts a throwaway GitLab CE and a Firefox (Selenium image) in the namespace `rmd-test` of the
+current kubectl context, creates a project with a changed Markdown file and an MR, and runs
+[`e2e/e2e.mjs`](e2e/e2e.mjs) in both diff views. It installs the add-on, adds the instance in the options page, checks
+the rendered diff, posts comments on a changed, an unchanged and a removed paragraph, and verifies their diff positions
+through the API. The namespace is deleted afterwards (`KEEP=1` keeps it).
+
+Needs about 8 GiB of free node disk and 6 GiB of memory. Screenshots and results go to `e2e/out/`.
 
 `npm run build` writes the unpacked add-on to `dist/`. To load it manually, open `about:debugging#/runtime/this-firefox`,
 choose **Load Temporary Add-on**, and select `dist/manifest.json`.

@@ -101,7 +101,10 @@ async function loadFileModel(ctx, path) {
         resolveRelativeUrls(diff, {
           webBase: ctx.webBase,
           projectPath: ctx.projectPath,
-          sides: { old: { sha: baseSha, filePath: file.old_path }, new: { sha: headSha, filePath: file.new_path } },
+          sides: {
+            old: { sha: baseSha, filePath: file.old_path, text: oldText },
+            new: { sha: headSha, filePath: file.new_path, text: newText },
+          },
         }),
       commentsDisabled: hunks.approximate
         ? 'This file is too large to map rendered blocks to diff lines. Comment in the raw diff instead.'

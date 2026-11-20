@@ -65,6 +65,7 @@ test('flags local hunks that are too large for an exact diff', () => {
 
 test('parses data-sourcepos', () => {
   assert.deepEqual(parseSourcepos('3:1-5:12'), { start: 3, end: 5 });
+  assert.deepEqual(parseSourcepos('5:1-6:0'), { start: 5, end: 5 });
   assert.equal(parseSourcepos('garbage'), null);
   assert.equal(parseSourcepos(null), null);
 });
