@@ -1,3 +1,5 @@
+import { hostPattern as pattern } from '../lib/page.js';
+
 const DEFAULT_ORIGIN = 'https://gitlab.com';
 
 const form = document.getElementById('add-form');
@@ -8,11 +10,6 @@ const tbody = document.querySelector('#instances tbody');
 async function load() {
   const { instances = [], tokens = {} } = await browser.storage.local.get(['instances', 'tokens']);
   return { instances, tokens };
-}
-
-function pattern(origin) {
-  const url = new URL(origin);
-  return `${url.protocol}//${url.hostname}/*`;
 }
 
 function cell(child) {
@@ -110,15 +107,13 @@ form.addEventListener('submit', (ev) => {
 render();
 
 const renderByDefault = document.getElementById('render-by-default');
-browser.storage.local.get('renderByDefault').then((s) => (renderByDefault.checked = !!s.renderByDefault));
-renderByDefault.addEventListener('change', () => browser.storage.local.set({ renderByDefault: renderByDefault.checked }));
-
 const contextLines = document.getElementById('context-lines');
-browser.storage.local.get('contextLines').then((s) => {
+browser.storage.local.get(['renderByDefault', 'contextLines']).then((s) => {
+  renderByDefault.checked = !!s.renderByDefault;
   if (Number.isInteger(s.contextLines)) contextLines.value = s.contextLines;
 });
+renderByDefault.addEventListener('change', () => browser.storage.local.set({ renderByDefault: renderByDefault.checked }));
 contextLines.addEventListener('change', () => {
-  const value = Math.max(0, Math.floor(Number(contextLines.value) || 0));
-  contextLines.value = value;
-  browser.storage.local.set({ contextLines: value });
+  contextLines.value = Math.max(0, Math.floor(Number(contextLines.value) || 0));
+  browser.storage.local.set({ contextLines: Number(contextLines.value) });
 });

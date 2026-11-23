@@ -8,10 +8,7 @@
   <body>
     <section>
       <h2>GitLab instances</h2>
-      <p>
-        gitlab.com works out of the box. Add a self-managed instance by its address, for example
-        <code>https://gitlab.example.com</code>. Firefox asks for access to that site.
-      </p>
+      <p>gitlab.com works out of the box. Add a self-managed instance by its address; Firefox asks for access.</p>
       <form id="add-form">
         <input id="origin" type="url" placeholder="https://gitlab.example.com" required />
         <button type="submit">Add</button>
@@ -40,20 +37,15 @@
           Unchanged lines around a change
           <input id="context-lines" type="number" min="0" step="1" value="20" />
         </label>
-        <br />
-        Unchanged parts further away are collapsed. 0 shows the full file.
+        (0 shows the full file)
       </p>
     </section>
     <section>
       <h2>Authentication</h2>
       <p>
-        By default the add-on uses your existing GitLab sign-in in this browser. No token is needed.
-        Comments are posted as you.
-      </p>
-      <p>
-        Set a personal access token (scope <code>api</code>) only if your instance blocks session access to
-        the API. Tokens are stored in this browser profile only, are sent only to their instance, and are
-        accepted only for https instances.
+        The add-on uses your GitLab sign-in in this browser and posts comments as you. Set a personal access token
+        (scope <code>api</code>) only if your instance blocks session access to the API. Tokens stay in this browser
+        profile, go only to their instance, and require https.
       </p>
     </section>
     <script src="options.js"></script>

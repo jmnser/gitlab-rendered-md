@@ -1,10 +1,3 @@
-export class ApiError extends Error {
-  constructor(status, message) {
-    super(message);
-    this.status = status;
-  }
-}
-
 /**
  * Minimal GitLab REST API client.
  *
@@ -33,7 +26,7 @@ export function createApi({ apiBase, token, csrfToken, fetchImpl }) {
       } catch {
         // No JSON error body.
       }
-      throw new ApiError(res.status, `GitLab API ${method} ${path.split('?')[0]} failed: ${res.status}${detail ? ` ${detail}` : ''}`);
+      throw new Error(`GitLab API ${method} ${path.split('?')[0]} failed: ${res.status}${detail ? ` ${detail}` : ''}`);
     }
     if (as === 'text') return res.text();
     return { data: await res.json(), headers: res.headers };
