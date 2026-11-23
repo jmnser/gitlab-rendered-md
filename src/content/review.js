@@ -1,4 +1,5 @@
 import { COMMENTABLE, renderDiff } from '../lib/blockdiff.js';
+import { foldPlan } from '../lib/fold.js';
 import { parseSourcepos, pickCommentLines } from '../lib/linemap.js';
 
 function el(doc, tag, className, text) {
@@ -18,10 +19,20 @@ export function createPanel(doc, path) {
     el(doc, 'span', 'rmd-legend rmd-legend-removed', 'Removed'),
     el(doc, 'span', 'rmd-hint', 'Click a paragraph to comment on it.'),
   );
+  const fullToggle = el(doc, 'button', 'btn btn-default btn-sm gl-button rmd-full-toggle', 'Full file');
+  fullToggle.type = 'button';
+  fullToggle.hidden = true;
+  fullToggle.setAttribute('aria-pressed', 'false');
+  bar.querySelector('.rmd-hint').before(fullToggle);
   const status = el(doc, 'div', 'rmd-status', 'Rendering…');
   const body = el(doc, 'div', 'md rmd-body');
   root.append(bar, status, body);
-  return { root, status, body, hint: bar.querySelector('.rmd-hint') };
+  fullToggle.addEventListener('click', () => {
+    const full = !body.classList.contains('rmd-full');
+    body.classList.toggle('rmd-full', full);
+    fullToggle.setAttribute('aria-pressed', String(full));
+  });
+  return { root, status, body, fullToggle, hint: bar.querySelector('.rmd-hint') };
 }
 
 export function setStatus(ui, text, isError = false) {
@@ -41,6 +52,7 @@ export function setStatus(ui, text, isError = false) {
  *   noteUrl(noteId)    link to a note in GitLab
  *   finishDiff(diff)   post-processing of the merged diff (URL resolution)
  *   commentsDisabled   reason why commenting is off, or empty
+ *   contextLines       unchanged source lines shown around changes; 0 shows the full file
  * postComment(lines, text) -> Promise<discussion>
  */
 export function showReview(doc, ui, model, postComment) {
@@ -65,6 +77,7 @@ export function showReview(doc, ui, model, postComment) {
     section.append(el(doc, 'div', 'rmd-unplaced-title', 'Comments on lines without a rendered block'), ...unplaced);
     diff.append(section);
   }
+  foldUnchanged(doc, ui, diff, model.contextLines ?? 0);
 
   let hovered = null;
   const setHover = (block) => {
@@ -92,6 +105,51 @@ export function showReview(doc, ui, model, postComment) {
     });
     openForm(doc, diff, hit.block, lines, model, postComment);
   });
+}
+
+const CHANGED = ['rmd-added', 'rmd-removed', 'rmd-container'];
+
+/** Hides unchanged top-level blocks far from any change behind "Show N unchanged lines" bars. */
+function foldUnchanged(doc, ui, diff, contextLines) {
+  const children = Array.from(diff.children);
+  const items = children.map((node, i) => {
+    const range = parseSourcepos(node.getAttribute('data-sourcepos'));
+    return {
+      changed: CHANGED.some((c) => node.classList.contains(c)),
+      span: range ? range.end - range.start + 1 : 0,
+      heading: /^H[1-6]$/.test(node.tagName),
+      // Threads, the unplaced-comments section, and blocks that carry a thread.
+      keep:
+        !node.hasAttribute('data-rmd-side') ||
+        !!node.querySelector('.rmd-thread') ||
+        !!children[i + 1]?.classList.contains('rmd-thread'),
+    };
+  });
+  const visible = foldPlan(items, contextLines);
+
+  let folds = 0;
+  for (let i = 0; i < children.length; ) {
+    if (visible[i]) {
+      i++;
+      continue;
+    }
+    const run = [];
+    let lines = 0;
+    for (; i < children.length && !visible[i]; i++) {
+      run.push(children[i]);
+      lines += items[i].span;
+    }
+    const expand = el(doc, 'button', 'rmd-expand', `Show ${lines} unchanged line${lines === 1 ? '' : 's'}`);
+    expand.type = 'button';
+    expand.addEventListener('click', () => {
+      for (const node of run) node.classList.remove('rmd-folded');
+      expand.remove();
+    });
+    run[0].before(expand);
+    for (const node of run) node.classList.add('rmd-folded');
+    folds++;
+  }
+  ui.fullToggle.hidden = folds === 0;
 }
 
 function isInteractive(target) {

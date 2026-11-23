@@ -20,6 +20,10 @@ td {
   padding: 4px 8px 4px 0;
 }
 
+#context-lines {
+  width: 64px;
+}
+
 td input {
   width: 100%;
 }

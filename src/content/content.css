@@ -164,3 +164,29 @@
   font-weight: 600;
   margin-bottom: 8px;
 }
+
+/* Unchanged blocks far from a change, collapsed behind a "Show N unchanged lines" bar. */
+.rmd-body:not(.rmd-full) .rmd-folded {
+  display: none;
+}
+
+.rmd-body.rmd-full .rmd-expand {
+  display: none;
+}
+
+.rmd-expand {
+  display: block;
+  width: 100%;
+  margin: 8px 0;
+  padding: 4px 8px;
+  border: 1px dashed var(--gl-border-color-default, #dcdcde);
+  border-radius: 4px;
+  background: var(--gl-background-color-subtle, #fbfafd);
+  color: var(--gl-text-color-subtle, #626168);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.rmd-full-toggle[aria-pressed='true'] {
+  box-shadow: inset 0 0 0 2px var(--gl-border-color-strong, #89888d);
+}
