@@ -15,6 +15,7 @@ function setup(mermaidSvg) {
   const { window } = new JSDOM(`<div>${HTML}</div>`);
   const calls = [];
   const mermaid = {
+    parse: async (text) => ({ diagramType: text.startsWith('mindmap') ? 'mindmap' : 'flowchart-v2' }),
     initialize: (config) => calls.push(['initialize', config]),
     render: async (id, text) => {
       calls.push(['render', text]);
@@ -51,6 +52,7 @@ test('renders Mermaid in strict mode and sanitizes the SVG', async () => {
   await renderRich(root, window, load);
   const [[, config], render] = calls;
   assert.equal(config.securityLevel, 'strict');
+  assert.equal(config.layout, 'dagre');
   assert.deepEqual(render, ['render', 'graph TD\n  A --> B']);
   const pre = root.querySelector('pre[lang="mermaid"]');
   assert.ok(pre.classList.contains('rmd-added'));
@@ -73,6 +75,13 @@ test('keeps HTML labels and drops other HTML inside them', async () => {
   const label = root.querySelector('foreignObject span.nodeLabel');
   assert.equal(label.querySelector('p').innerHTML, 'Pool<br><small>serviceAllocation</small>');
   assert.equal(label.querySelector('img, form, input, style'), null);
+});
+
+test('keeps the default layout of mindmaps', async () => {
+  const { window, root, calls, load } = setup('<svg></svg>');
+  root.querySelector('code.js-render-mermaid').textContent = 'mindmap\n  root';
+  await renderRich(root, window, load);
+  assert.equal(calls[0][1].layout, undefined);
 });
 
 test('leaves an invalid Mermaid diagram as code', async (t) => {

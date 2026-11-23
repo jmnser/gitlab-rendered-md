@@ -22,9 +22,6 @@ const SVG = {
   RETURN_DOM_FRAGMENT: true,
 };
 
-/** Mermaid instances already configured; the configuration is global to the library. */
-const configured = new WeakSet();
-
 /**
  * Replaces the source of Mermaid diagrams and math inside `root` with the
  * rendered result. Blocks that fail to render stay as code.
@@ -49,19 +46,21 @@ export async function renderRich(root, win, load) {
   const diagrams = unique(root.querySelectorAll(MERMAID), (el) => el.closest('pre') ?? el);
   if (diagrams.length) {
     const mermaid = await load('mermaid');
-    if (!configured.has(mermaid)) {
-      mermaid.initialize({
-        startOnLoad: false,
-        securityLevel: 'strict',
-        theme: isDark(win) ? 'dark' : 'default',
-        // Invalid diagrams throw and stay as code instead of leaving an error graphic in the page.
-        suppressErrorRendering: true,
-      });
-      configured.add(mermaid);
-    }
+    const config = {
+      startOnLoad: false,
+      securityLevel: 'strict',
+      theme: isDark(win) ? 'dark' : 'default',
+      // Invalid diagrams throw and stay as code instead of leaving an error graphic in the page.
+      suppressErrorRendering: true,
+    };
     for (const [i, el] of diagrams.entries()) {
       try {
-        const { svg } = await mermaid.render(`rmd-mermaid-${Date.now()}-${i}`, el.textContent.trim());
+        const text = el.textContent.trim();
+        // Mermaid's default layout, ELK, reads `Math` through `window`, which a content script sees only through an
+        // Xray wrapper. GitLab's Mermaid lays out with dagre as well. Mindmaps use cose-bilkent unless a layout is set.
+        const { diagramType } = await mermaid.parse(text);
+        mermaid.initialize(diagramType === 'mindmap' ? config : { ...config, layout: 'dagre' });
+        const { svg } = await mermaid.render(`rmd-mermaid-${Date.now()}-${i}`, text);
         const fragment = sanitize(svg, win, SVG);
         // <style> is allowed for Mermaid's own, ID-scoped CSS. Inside a label it would style the whole page.
         for (const style of fragment.querySelectorAll('foreignObject style')) style.remove();
