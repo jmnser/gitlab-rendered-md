@@ -1,0 +1,27 @@
+{
+  "name": "gitlab-rendered-md",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Firefox add-on: review Markdown files in GitLab merge requests as rendered documents",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node --test test/*.test.js",
+    "lint": "npm run build && web-ext lint --source-dir dist",
+    "package": "npm run build && web-ext build --source-dir dist --artifacts-dir artifacts --overwrite-dest",
+    "start": "npm run build && web-ext run --source-dir dist"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "jsdom": "^31.0.1",
+    "selenium-webdriver": "^4.52.0",
+    "web-ext": "^10.8.0"
+  },
+  "dependencies": {
+    "dompurify": "3.4.17"
+  }
+}

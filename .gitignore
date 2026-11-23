@@ -1,0 +1,6 @@
+node_modules/
+dist/
+artifacts/
+.claude/worktrees/
+.claude-worktree.md
+e2e/out/

@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>GitLab Rendered Markdown Review</title>
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body>
+    <section>
+      <h2>GitLab instances</h2>
+      <p>
+        gitlab.com works out of the box. Add a self-managed instance by its address, for example
+        <code>https://gitlab.example.com</code>. Firefox asks for access to that site.
+      </p>
+      <form id="add-form">
+        <input id="origin" type="url" placeholder="https://gitlab.example.com" required />
+        <button type="submit">Add</button>
+      </form>
+      <p id="add-error" class="error" hidden></p>
+      <table id="instances">
+        <thead>
+          <tr>
+            <th>Instance</th>
+            <th>Access</th>
+            <th>Personal access token (optional)</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+    <section>
+      <h2>Authentication</h2>
+      <p>
+        By default the add-on uses your existing GitLab sign-in in this browser. No token is needed.
+        Comments are posted as you.
+      </p>
+      <p>
+        Set a personal access token (scope <code>api</code>) only if your instance blocks session access to
+        the API. Tokens are stored in this browser profile only, are sent only to their instance, and are
+        accepted only for https instances.
+      </p>
+    </section>
+    <script src="options.js"></script>
+  </body>
+</html>
