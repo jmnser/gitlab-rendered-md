@@ -28,6 +28,13 @@ Hidden text.
 Footnote reference[^1].
 
 [^1]: The footnote.
+
+Euler: $\`e^{i\\pi} + 1 = 0\`$
+
+\`\`\`mermaid
+graph TD
+  A --> B
+\`\`\`
 `;
 
 const NEW = `# Guide
@@ -59,6 +66,13 @@ Hidden text, now changed.
 Footnote reference[^1].
 
 [^1]: The footnote.
+
+Euler: $\`e^{i\\pi} + 1 = 0\`$
+
+\`\`\`mermaid
+graph TD
+  A --> C
+\`\`\`
 `;
 
 const API = 'http://localhost:18080/api/v4';

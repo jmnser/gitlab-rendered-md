@@ -26,6 +26,12 @@
       "run_at": "document_idle"
     }
   ],
+  "web_accessible_resources": [
+    {
+      "resources": ["lib/*"],
+      "matches": ["https://*/*", "http://*/*"]
+    }
+  ],
   "options_ui": {
     "page": "options.html"
   },

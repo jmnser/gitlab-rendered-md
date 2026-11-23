@@ -107,12 +107,15 @@ form.addEventListener('submit', (ev) => {
 render();
 
 const renderByDefault = document.getElementById('render-by-default');
+const renderDiagrams = document.getElementById('render-diagrams');
 const contextLines = document.getElementById('context-lines');
-browser.storage.local.get(['renderByDefault', 'contextLines']).then((s) => {
+browser.storage.local.get(['renderByDefault', 'renderDiagrams', 'contextLines']).then((s) => {
   renderByDefault.checked = !!s.renderByDefault;
+  renderDiagrams.checked = s.renderDiagrams !== false;
   if (Number.isInteger(s.contextLines)) contextLines.value = s.contextLines;
 });
 renderByDefault.addEventListener('change', () => browser.storage.local.set({ renderByDefault: renderByDefault.checked }));
+renderDiagrams.addEventListener('change', () => browser.storage.local.set({ renderDiagrams: renderDiagrams.checked }));
 contextLines.addEventListener('change', () => {
   contextLines.value = Math.max(0, Math.floor(Number(contextLines.value) || 0));
   browser.storage.local.set({ contextLines: Number(contextLines.value) });
