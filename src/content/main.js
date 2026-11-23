@@ -160,7 +160,7 @@ async function openRendered(ctx, path, state) {
     if (renderDiagrams) {
       renderRich(state.ui.body, window, loadLibrary).catch((e) => {
         console.error('[gitlab-rendered-md]', path, e);
-        setStatus(state.ui, `Diagrams and math could not be rendered: ${e.message}`, true);
+        setStatus(state.ui, [notice, `Diagrams and math could not be rendered: ${e.message}`].filter(Boolean).join(' '), true);
       });
     }
   } catch (e) {

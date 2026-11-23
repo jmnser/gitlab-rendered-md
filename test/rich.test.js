@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { JSDOM } from 'jsdom';
 import katex from 'katex';
-import { renderRich } from '../src/lib/rich.js';
+import { isDark, renderRich } from '../src/lib/rich.js';
 
 // Shaped like GitLab's Markdown API output for math and Mermaid.
 const HTML = `
@@ -35,6 +35,15 @@ test('renders math as MathML and keeps the source elements', async () => {
   assert.equal(display.tagName, 'PRE');
   assert.equal(display.getAttribute('data-sourcepos'), '3:1-5:3');
   assert.equal(display.querySelector('math').getAttribute('display'), 'block');
+  // The TeX source stays inside <annotation>, which Firefox does not display.
+  assert.equal(display.querySelector('math > semantics > annotation').textContent, 'x = \\frac{1}{2}');
+});
+
+test('detects a dark page background', () => {
+  const { window } = new JSDOM('<body style="background-color: rgb(24, 23, 29)"></body>');
+  assert.equal(isDark(window), true);
+  assert.equal(isDark(new JSDOM('<body style="background-color: rgb(255, 255, 255)"></body>').window), false);
+  assert.equal(isDark(new JSDOM('').window), false);
 });
 
 test('renders Mermaid in strict mode and sanitizes the SVG', async () => {

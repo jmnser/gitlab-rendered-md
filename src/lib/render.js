@@ -10,8 +10,16 @@ const ABSOLUTE_OR_ANCHOR = /^([a-z][a-z0-9+.-]*:|\/|#|\?)/i;
  * `data-*` attributes such as `data-sourcepos` are kept.
  */
 export function parseRenderedHtml(html, win) {
-  const purify = createDOMPurify(win);
-  return purify.sanitize(html, { RETURN_DOM: true, ALLOW_DATA_ATTR: true });
+  return sanitize(html, win, { RETURN_DOM: true, ALLOW_DATA_ATTR: true });
+}
+
+const purifiers = new WeakMap();
+
+/** Sanitizes markup with DOMPurify, one instance per window. */
+export function sanitize(markup, win, config) {
+  let purify = purifiers.get(win);
+  if (!purify) purifiers.set(win, (purify = createDOMPurify(win)));
+  return purify.sanitize(markup, config);
 }
 
 /** Gives lazy-loaded images and videos their real `src`. */
