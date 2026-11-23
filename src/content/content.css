@@ -187,10 +187,12 @@
 
 /*
  * Rendered Mermaid diagrams and math replace their source inside the original code element.
- * Mermaid measures labels in the page font, so diagrams must not inherit the monospace font of <pre>.
+ * Mermaid measures labels in the page body, so they must not take the font and word breaking of <pre>.
  */
 .rmd-body pre.rmd-rich-host {
-  font-family: inherit;
+  font: inherit;
+  word-break: normal;
+  overflow-wrap: normal;
   white-space: normal;
   background: none;
   border: 0;
@@ -201,6 +203,11 @@
 .rmd-body code.rmd-rich-host {
   background: none;
   padding: 0;
+}
+
+/* GitLab colours Markdown paragraphs. Mermaid sets label colours on the enclosing element. */
+.rmd-rich foreignObject p {
+  color: inherit;
 }
 
 .rmd-rich svg {

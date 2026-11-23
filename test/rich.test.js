@@ -69,6 +69,7 @@ test('keeps HTML labels and drops other HTML inside them', async () => {
   await renderRich(root, window, load);
   // GitLab renders HTML labels too, so labels like `A["x<br/><small>y</small>"]` look the same.
   assert.notEqual(calls[0][1].htmlLabels, false);
+  assert.notEqual(calls[0][1].flowchart?.htmlLabels, false);
   const label = root.querySelector('foreignObject span.nodeLabel');
   assert.equal(label.querySelector('p').innerHTML, 'Pool<br><small>serviceAllocation</small>');
   assert.equal(label.querySelector('img, form, input, style'), null);
