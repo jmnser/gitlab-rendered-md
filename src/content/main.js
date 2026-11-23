@@ -30,6 +30,9 @@ const LIBRARIES = { mermaid: 'lib/mermaid/mermaid.esm.min.mjs', katex: 'lib/kate
 const libraries = new Map();
 
 function loadLibrary(name) {
+  // Mermaid bundles lodash, which finds the global object through `global` or `self`. A content script's `self` is
+  // the page window, so lodash falls back to `Function('return this')`, which the add-on's CSP blocks.
+  globalThis.global ??= globalThis;
   if (!libraries.has(name)) {
     const loaded = import(browser.runtime.getURL(LIBRARIES[name])).then((module) => module.default);
     loaded.catch(() => libraries.delete(name)); // Allow a retry.

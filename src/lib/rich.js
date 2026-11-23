@@ -53,6 +53,9 @@ export async function renderRich(root, win, load) {
       mermaid.initialize({
         startOnLoad: false,
         securityLevel: 'strict',
+        // Mermaid's default layout, ELK, reads `Math` through `window`, which a content script sees only through
+        // an Xray wrapper. GitLab's Mermaid lays out with dagre as well.
+        layout: 'dagre',
         theme: isDark(win) ? 'dark' : 'default',
         // Invalid diagrams throw and stay as code instead of leaving an error graphic in the page.
         suppressErrorRendering: true,

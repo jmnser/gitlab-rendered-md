@@ -51,6 +51,7 @@ test('renders Mermaid in strict mode and sanitizes the SVG', async () => {
   await renderRich(root, window, load);
   const [[, config], render] = calls;
   assert.equal(config.securityLevel, 'strict');
+  assert.equal(config.layout, 'dagre');
   assert.deepEqual(render, ['render', 'graph TD\n  A --> B']);
   const pre = root.querySelector('pre[lang="mermaid"]');
   assert.ok(pre.classList.contains('rmd-added'));
