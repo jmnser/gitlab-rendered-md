@@ -185,8 +185,12 @@
   cursor: pointer;
 }
 
-/* Rendered Mermaid diagrams and math replace their source inside the original code element. */
+/*
+ * Rendered Mermaid diagrams and math replace their source inside the original code element.
+ * Mermaid measures labels in the page font, so diagrams must not inherit the monospace font of <pre>.
+ */
 .rmd-body pre.rmd-rich-host {
+  font-family: inherit;
   white-space: normal;
   background: none;
   border: 0;

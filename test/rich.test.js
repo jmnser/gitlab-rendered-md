@@ -15,7 +15,7 @@ function setup(mermaidSvg) {
   const { window } = new JSDOM(`<div>${HTML}</div>`);
   const calls = [];
   const mermaid = {
-    initialize: (config) => calls.push(['initialize', config.securityLevel]),
+    initialize: (config) => calls.push(['initialize', config]),
     render: async (id, text) => {
       calls.push(['render', text]);
       if (mermaidSvg instanceof Error) throw mermaidSvg;
@@ -49,12 +49,29 @@ test('detects a dark page background', () => {
 test('renders Mermaid in strict mode and sanitizes the SVG', async () => {
   const { window, root, calls, load } = setup('<svg><script>alert(1)</script><g onclick="x()"><text>A</text></g></svg>');
   await renderRich(root, window, load);
-  assert.deepEqual(calls, [['initialize', 'strict'], ['render', 'graph TD\n  A --> B']]);
+  const [[, config], render] = calls;
+  assert.equal(config.securityLevel, 'strict');
+  assert.deepEqual(render, ['render', 'graph TD\n  A --> B']);
   const pre = root.querySelector('pre[lang="mermaid"]');
   assert.ok(pre.classList.contains('rmd-added'));
   assert.equal(pre.querySelector('svg text').textContent, 'A');
   assert.equal(pre.querySelector('script'), null);
   assert.equal(pre.querySelector('g').hasAttribute('onclick'), false);
+});
+
+test('keeps HTML labels and drops other HTML inside them', async () => {
+  const { window, root, calls, load } = setup(
+    '<svg><g class="label"><foreignObject width="120" height="21"><div xmlns="http://www.w3.org/1999/xhtml">' +
+      '<span class="nodeLabel"><p>Pool<br><small>serviceAllocation</small></p>' +
+      '<img src="https://example.com/t.png"><form><input></form><style>body{display:none}</style>' +
+      '</span></div></foreignObject></g></svg>',
+  );
+  await renderRich(root, window, load);
+  // GitLab renders HTML labels too, so labels like `A["x<br/><small>y</small>"]` look the same.
+  assert.notEqual(calls[0][1].htmlLabels, false);
+  const label = root.querySelector('foreignObject span.nodeLabel');
+  assert.equal(label.querySelector('p').innerHTML, 'Pool<br><small>serviceAllocation</small>');
+  assert.equal(label.querySelector('img, form, input, style'), null);
 });
 
 test('leaves an invalid Mermaid diagram as code', async (t) => {

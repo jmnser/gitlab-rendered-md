@@ -13,7 +13,14 @@ const MATH = '.js-render-math, [data-math-style]';
 
 // KaTeX wraps MathML in <semantics> with the TeX source as <annotation>, which Firefox does not display.
 const MATHML = { USE_PROFILES: { mathMl: true }, ADD_TAGS: ['semantics', 'annotation'], RETURN_DOM_FRAGMENT: true };
-const SVG = { USE_PROFILES: { svg: true, svgFilters: true }, RETURN_DOM_FRAGMENT: true };
+// Mermaid draws HTML labels as <foreignObject><div><span><p>…</p></span></div>, with inline tags such as <small>.
+const LABEL_TAGS = ['div', 'span', 'p', 'br', 'b', 'i', 'strong', 'em', 'small', 'sub', 'sup', 'code', 'u', 's'];
+const SVG = {
+  USE_PROFILES: { svg: true, svgFilters: true },
+  ADD_TAGS: ['foreignObject', ...LABEL_TAGS],
+  HTML_INTEGRATION_POINTS: { 'annotation-xml': true, foreignobject: true },
+  RETURN_DOM_FRAGMENT: true,
+};
 
 /** Mermaid instances already configured; the configuration is global to the library. */
 const configured = new WeakSet();
@@ -49,15 +56,16 @@ export async function renderRich(root, win, load) {
         theme: isDark(win) ? 'dark' : 'default',
         // Invalid diagrams throw and stay as code instead of leaving an error graphic in the page.
         suppressErrorRendering: true,
-        htmlLabels: false,
-        flowchart: { htmlLabels: false },
       });
       configured.add(mermaid);
     }
     for (const [i, el] of diagrams.entries()) {
       try {
         const { svg } = await mermaid.render(`rmd-mermaid-${Date.now()}-${i}`, el.textContent.trim());
-        replaceSource(el, sanitize(svg, win, SVG));
+        const fragment = sanitize(svg, win, SVG);
+        // <style> is allowed for Mermaid's own, ID-scoped CSS. Inside a label it would style the whole page.
+        for (const style of fragment.querySelectorAll('foreignObject style')) style.remove();
+        replaceSource(el, fragment);
       } catch (e) {
         console.warn('[gitlab-rendered-md] Mermaid diagram not rendered', e);
       }
