@@ -20,12 +20,12 @@ In Firefox, open `about:debugging#/runtime/this-firefox`, choose **Load Temporar
 In the **Changes** tab of a merge request, click **Rendered** on a Markdown file. Click a block to comment on it; the
 comment is a normal GitLab diff comment.
 
-The add-on options add self-managed GitLab instances, open files rendered by default, and set how much unchanged
-context is shown around changes.
+Mermaid diagrams and math are rendered as well. The add-on options add self-managed GitLab instances, open files
+rendered by default, turn off diagram and math rendering, and set how much unchanged context is shown around changes.
 
 ## Limitations
 
-- Mermaid, PlantUML and math appear as code.
+- PlantUML and Kroki diagrams render only if the GitLab instance has them enabled.
 - Threads from earlier MR versions are not shown.
 - GitLab markup changes can break the add-on. All selectors are in [`src/content/gitlab-dom.js`](src/content/gitlab-dom.js).
 

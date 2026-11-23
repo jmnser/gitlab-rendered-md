@@ -28,3 +28,8 @@ await cp('src/content/content.css', 'dist/content.css');
 await cp('src/options/options.html', 'dist/options.html');
 await cp('src/options/options.css', 'dist/options.css');
 await cp('src/icons/icon.svg', 'dist/icons/icon.svg');
+// Unmodified ESM library builds, imported by the content script only when a file needs them.
+const noSourceMaps = { recursive: true, filter: (src) => !src.endsWith('.map') };
+await cp('node_modules/mermaid/dist/mermaid.esm.min.mjs', 'dist/lib/mermaid/mermaid.esm.min.mjs');
+await cp('node_modules/mermaid/dist/chunks/mermaid.esm.min', 'dist/lib/mermaid/chunks/mermaid.esm.min', noSourceMaps);
+await cp('node_modules/katex/dist/katex.mjs', 'dist/lib/katex/katex.mjs');

@@ -2,6 +2,7 @@ import { createApi } from '../lib/api.js';
 import { buildLineMap, localHunks, parseUnifiedDiff, splitLines } from '../lib/linemap.js';
 import { parseMergeRequestPath } from '../lib/page.js';
 import { activateLazyMedia, parseRenderedHtml, resolveRelativeUrls } from '../lib/render.js';
+import { renderRich } from '../lib/rich.js';
 import { fileThreads } from '../lib/threads.js';
 import { csrfToken, diffContent, findMarkdownDiffFiles, toggleContainer } from './gitlab-dom.js';
 import { createPanel, setStatus, showReview } from './review.js';
@@ -14,6 +15,8 @@ let mrPromise = null;
 let renderByDefault = false;
 /** Option: unchanged source lines shown around changes; 0 shows the full file. */
 let contextLines = 20;
+/** Option: render Mermaid diagrams and math. */
+let renderDiagrams = true;
 
 /*
  * Firefox's `content.fetch` sends requests as the page itself (same origin,
@@ -21,6 +24,19 @@ let contextLines = 20;
  */
 const pageFetch =
   typeof content !== 'undefined' && content?.fetch ? content.fetch.bind(content) : globalThis.fetch.bind(globalThis);
+
+/** Libraries imported on demand; build.mjs copies them into the add-on. */
+const LIBRARIES = { mermaid: 'lib/mermaid/mermaid.esm.min.mjs', katex: 'lib/katex/katex.mjs' };
+const libraries = new Map();
+
+function loadLibrary(name) {
+  if (!libraries.has(name)) {
+    const loaded = import(browser.runtime.getURL(LIBRARIES[name])).then((module) => module.default);
+    loaded.catch(() => libraries.delete(name)); // Allow a retry.
+    libraries.set(name, loaded);
+  }
+  return libraries.get(name);
+}
 
 function pageContext() {
   const parsed = parseMergeRequestPath(location.pathname, document.body?.dataset.projectFullPath);
@@ -141,6 +157,12 @@ async function openRendered(ctx, path, state) {
     if (ctx.key !== currentKey) return;
     setStatus(state.ui, notice);
     showReview(document, state.ui, { ...model, contextLines }, postComment);
+    if (renderDiagrams) {
+      renderRich(state.ui.body, window, loadLibrary).catch((e) => {
+        console.error('[gitlab-rendered-md]', path, e);
+        setStatus(state.ui, [notice, `Diagrams and math could not be rendered: ${e.message}`].filter(Boolean).join(' '), true);
+      });
+    }
   } catch (e) {
     console.error('[gitlab-rendered-md]', path, e);
     state.failed = true; // Retried on the next toggle.
@@ -240,8 +262,9 @@ function scheduleScan() {
 
 async function start() {
   try {
-    const options = await browser.storage.local.get(['renderByDefault', 'contextLines']);
+    const options = await browser.storage.local.get(['renderByDefault', 'contextLines', 'renderDiagrams']);
     renderByDefault = !!options.renderByDefault;
+    renderDiagrams = options.renderDiagrams !== false;
     if (Number.isInteger(options.contextLines) && options.contextLines >= 0) contextLines = options.contextLines;
   } catch {
     // Without storage access the defaults apply.

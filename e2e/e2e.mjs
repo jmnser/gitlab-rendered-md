@@ -100,6 +100,15 @@ try {
   check('relative image resolves to raw at head', /\/-\/raw\/[0-9a-f]{40}\/docs\/img\/logo\.png$/.test(stats.img ?? ''), stats.img);
   check('changed details block is open', stats.detailsOpen === true);
   check('footnote paragraph is unchanged', stats.footnoteSame?.includes('rmd-same'), stats.footnoteSame);
+  const rich = await driver
+    .wait(async () => {
+      const r = await driver.executeScript(`
+        const d = document.querySelector('.rmd-diff');
+        return { svgs: d.querySelectorAll('pre.rmd-rich-host svg').length, math: d.querySelectorAll('.rmd-rich-host math').length };`);
+      return r.svgs >= 2 && r.math >= 1 ? r : null;
+    }, 30000)
+    .catch(() => null);
+  check('Mermaid diagrams (old and new) and math rendered', !!rich, JSON.stringify(rich));
   await driver.executeScript("document.querySelector('.rmd-panel').scrollIntoView()");
   await shot('03-rendered');
 

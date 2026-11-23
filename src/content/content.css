@@ -184,3 +184,22 @@
   font-size: 12px;
   cursor: pointer;
 }
+
+/* Rendered Mermaid diagrams and math replace their source inside the original code element. */
+.rmd-body pre.rmd-rich-host {
+  white-space: normal;
+  background: none;
+  border: 0;
+  padding: 0;
+  text-align: center;
+}
+
+.rmd-body code.rmd-rich-host {
+  background: none;
+  padding: 0;
+}
+
+.rmd-rich svg {
+  max-width: 100%;
+  height: auto;
+}

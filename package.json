@@ -22,6 +22,8 @@
     "web-ext": "^10.8.0"
   },
   "dependencies": {
-    "dompurify": "3.4.17"
+    "dompurify": "3.4.17",
+    "katex": "0.19.1",
+    "mermaid": "12.3.0"
   }
 }
