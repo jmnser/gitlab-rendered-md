@@ -12,6 +12,8 @@ let currentKey = null;
 let mrPromise = null;
 /** Option: open Markdown files in the rendered view when they first appear. */
 let renderByDefault = false;
+/** Option: unchanged source lines shown around changes; 0 shows the full file. */
+let contextLines = 20;
 
 /*
  * Firefox's `content.fetch` sends requests as the page itself (same origin,
@@ -138,7 +140,7 @@ async function openRendered(ctx, path, state) {
     const { model, notice, postComment } = await loadFileModel(ctx, path);
     if (ctx.key !== currentKey) return;
     setStatus(state.ui, notice);
-    showReview(document, state.ui, model, postComment);
+    showReview(document, state.ui, { ...model, contextLines }, postComment);
   } catch (e) {
     console.error('[gitlab-rendered-md]', path, e);
     state.failed = true; // Retried on the next toggle.
@@ -238,9 +240,11 @@ function scheduleScan() {
 
 async function start() {
   try {
-    renderByDefault = !!(await browser.storage.local.get('renderByDefault')).renderByDefault;
+    const options = await browser.storage.local.get(['renderByDefault', 'contextLines']);
+    renderByDefault = !!options.renderByDefault;
+    if (Number.isInteger(options.contextLines) && options.contextLines >= 0) contextLines = options.contextLines;
   } catch {
-    // Without storage access the files start in the raw view.
+    // Without storage access the defaults apply.
   }
   scan();
   new MutationObserver((records) => {

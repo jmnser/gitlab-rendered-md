@@ -112,3 +112,13 @@ render();
 const renderByDefault = document.getElementById('render-by-default');
 browser.storage.local.get('renderByDefault').then((s) => (renderByDefault.checked = !!s.renderByDefault));
 renderByDefault.addEventListener('change', () => browser.storage.local.set({ renderByDefault: renderByDefault.checked }));
+
+const contextLines = document.getElementById('context-lines');
+browser.storage.local.get('contextLines').then((s) => {
+  if (Number.isInteger(s.contextLines)) contextLines.value = s.contextLines;
+});
+contextLines.addEventListener('change', () => {
+  const value = Math.max(0, Math.floor(Number(contextLines.value) || 0));
+  contextLines.value = value;
+  browser.storage.local.set({ contextLines: value });
+});

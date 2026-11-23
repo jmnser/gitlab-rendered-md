@@ -35,6 +35,14 @@
         <input id="render-by-default" type="checkbox" />
         Show Markdown files rendered by default
       </label>
+      <p>
+        <label>
+          Unchanged lines around a change
+          <input id="context-lines" type="number" min="0" step="1" value="20" />
+        </label>
+        <br />
+        Unchanged parts further away are collapsed. 0 shows the full file.
+      </p>
     </section>
     <section>
       <h2>Authentication</h2>
