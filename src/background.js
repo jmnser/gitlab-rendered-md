@@ -1,7 +1,8 @@
+import { hostPattern } from './lib/page.js';
+
 /*
  * gitlab.com is covered by the static content script in manifest.json.
- * Self-managed instances are added in the options page; for each one the
- * user granted host access to, a content script is registered here.
+ * Self-managed instances get a content script here once the user granted host access.
  */
 
 const SCRIPT_ID = 'rmd-self-managed';
@@ -10,8 +11,8 @@ async function syncContentScripts() {
   const { instances = [] } = await browser.storage.local.get('instances');
   const matches = [];
   for (const origin of instances) {
-    const pattern = originPattern(origin);
-    if (pattern && (await browser.permissions.contains({ origins: [pattern] }))) matches.push(pattern);
+    const pattern = hostPattern(origin);
+    if (await browser.permissions.contains({ origins: [pattern] })) matches.push(pattern);
   }
 
   const registered = await browser.scripting.getRegisteredContentScripts({ ids: [SCRIPT_ID] });
@@ -26,16 +27,6 @@ async function syncContentScripts() {
       runAt: 'document_idle',
     },
   ]);
-}
-
-/** `https://gitlab.example.com:8443` -> `https://gitlab.example.com/*` (match patterns carry no port). */
-function originPattern(origin) {
-  try {
-    const url = new URL(origin);
-    return `${url.protocol}//${url.hostname}/*`;
-  } catch {
-    return null;
-  }
 }
 
 // Syncs run one after another; overlapping runs would register the same id twice.

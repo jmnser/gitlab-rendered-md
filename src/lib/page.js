@@ -1,3 +1,9 @@
+/** `https://gitlab.example.com:8443` -> `https://gitlab.example.com/*` (match patterns carry no port). */
+export function hostPattern(origin) {
+  const url = new URL(origin);
+  return `${url.protocol}//${url.hostname}/*`;
+}
+
 /** File extensions treated as Markdown. */
 export const MARKDOWN_FILE = /\.(md|markdown|mdown|mkd|mkdn)$/i;
 

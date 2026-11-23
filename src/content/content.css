@@ -8,7 +8,8 @@
   margin-right: 8px;
 }
 
-.rmd-toggle[aria-pressed='true'] {
+.rmd-toggle[aria-pressed='true'],
+.rmd-full-toggle[aria-pressed='true'] {
   box-shadow: inset 0 0 0 2px var(--gl-border-color-strong, #89888d);
 }
 
@@ -166,10 +167,7 @@
 }
 
 /* Unchanged blocks far from a change, collapsed behind a "Show N unchanged lines" bar. */
-.rmd-body:not(.rmd-full) .rmd-folded {
-  display: none;
-}
-
+.rmd-body:not(.rmd-full) .rmd-folded,
 .rmd-body.rmd-full .rmd-expand {
   display: none;
 }
@@ -185,8 +183,4 @@
   color: var(--gl-text-color-subtle, #626168);
   font-size: 12px;
   cursor: pointer;
-}
-
-.rmd-full-toggle[aria-pressed='true'] {
-  box-shadow: inset 0 0 0 2px var(--gl-border-color-strong, #89888d);
 }
