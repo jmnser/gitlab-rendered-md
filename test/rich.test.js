@@ -18,6 +18,7 @@ function setup(mermaidSvg) {
     initialize: (config) => calls.push(['initialize', config.securityLevel]),
     render: async (id, text) => {
       calls.push(['render', text]);
+      if (mermaidSvg instanceof Error) throw mermaidSvg;
       return { svg: mermaidSvg };
     },
   };
@@ -45,6 +46,15 @@ test('renders Mermaid in strict mode and sanitizes the SVG', async () => {
   assert.equal(pre.querySelector('svg text').textContent, 'A');
   assert.equal(pre.querySelector('script'), null);
   assert.equal(pre.querySelector('g').hasAttribute('onclick'), false);
+});
+
+test('leaves an invalid Mermaid diagram as code', async (t) => {
+  t.mock.method(console, 'warn', () => {});
+  const { window, root, load } = setup(new Error('Parse error'));
+  await renderRich(root, window, load);
+  const pre = root.querySelector('pre[lang="mermaid"]');
+  assert.equal(pre.classList.contains('rmd-rich-host'), false);
+  assert.equal(pre.textContent, 'graph TD\n  A --> B');
 });
 
 test('loads no library when there is nothing to render', async () => {
