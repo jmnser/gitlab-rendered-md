@@ -108,3 +108,7 @@ form.addEventListener('submit', (ev) => {
 });
 
 render();
+
+const renderByDefault = document.getElementById('render-by-default');
+browser.storage.local.get('renderByDefault').then((s) => (renderByDefault.checked = !!s.renderByDefault));
+renderByDefault.addEventListener('change', () => browser.storage.local.set({ renderByDefault: renderByDefault.checked }));

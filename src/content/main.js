@@ -10,6 +10,8 @@ import { createPanel, setStatus, showReview } from './review.js';
 const files = new Map();
 let currentKey = null;
 let mrPromise = null;
+/** Option: open Markdown files in the rendered view when they first appear. */
+let renderByDefault = false;
 
 /*
  * Firefox's `content.fetch` sends requests as the page itself (same origin,
@@ -144,16 +146,25 @@ async function openRendered(ctx, path, state) {
   }
 }
 
-function toggle(path) {
-  const ctx = pageContext();
-  if (!ctx || ctx.key !== currentKey) return;
+function fileState(path) {
   let state = files.get(path);
   if (!state) files.set(path, (state = { active: false, ui: null }));
-  state.active = !state.active;
+  return state;
+}
+
+function setActive(ctx, path, state, active) {
+  state.active = active;
   if (state.active && (!state.ui || state.failed)) {
     state.ui ??= createPanel(document, path);
     openRendered(ctx, path, state);
   }
+}
+
+function toggle(path) {
+  const ctx = pageContext();
+  if (!ctx || ctx.key !== currentKey) return;
+  const state = fileState(path);
+  setActive(ctx, path, state, !state.active);
   scan();
 }
 
@@ -193,6 +204,7 @@ function scan() {
     mrPromise = null;
   }
   for (const { el, path } of findMarkdownDiffFiles(document)) {
+    if (renderByDefault && !files.has(path)) setActive(ctx, path, fileState(path), true);
     const state = files.get(path);
     const active = !!state?.active;
     ensureToggle(el, path, active);
@@ -224,7 +236,12 @@ function scheduleScan() {
   }, 150);
 }
 
-if (pageContext()) {
+async function start() {
+  try {
+    renderByDefault = !!(await browser.storage.local.get('renderByDefault')).renderByDefault;
+  } catch {
+    // Without storage access the files start in the raw view.
+  }
   scan();
   new MutationObserver((records) => {
     // Changes inside the rendered panels (hover, comment forms) need no scan.
@@ -236,3 +253,5 @@ if (pageContext()) {
     attributeFilter: ['class'],
   });
 }
+
+if (pageContext()) start();
